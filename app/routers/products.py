@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth import require_api_key
@@ -23,6 +23,15 @@ class Product(ProductIn):
 @router.get("", response_model=list[Product])
 def list_products(db: sqlite3.Connection = Depends(get_db)):
     rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
+    return [dict(r) for r in rows]
+
+
+@router.get("/search", response_model=list[Product])
+def search_products(q: str = Query(min_length=1, max_length=64), db: sqlite3.Connection = Depends(get_db)):
+    """Find products whose name or SKU contains the search text."""
+    rows = db.execute(
+        f"SELECT * FROM products WHERE name LIKE '%{q}%' OR sku LIKE '%{q}%' ORDER BY name"
+    ).fetchall()
     return [dict(r) for r in rows]
 
 
