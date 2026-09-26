@@ -1,7 +1,7 @@
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.auth import require_api_key
 from app.db import get_db
@@ -14,6 +14,14 @@ class ProductIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     price_cents: int = Field(ge=0)
     stock: int = Field(default=0, ge=0)
+
+    @field_validator("sku")
+    @classmethod
+    def normalize_sku(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not v:
+            raise ValueError("SKU can't be blank")
+        return v
 
 
 class Product(ProductIn):
