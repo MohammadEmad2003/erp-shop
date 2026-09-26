@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS products (
     price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
     stock       INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0)
 );
+
+CREATE TABLE IF NOT EXISTS price_changes (
+    id         INTEGER PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products (id),
+    old_cents  INTEGER NOT NULL,
+    new_cents  INTEGER NOT NULL,
+    changed_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
