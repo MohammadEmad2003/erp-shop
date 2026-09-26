@@ -14,6 +14,7 @@ class ProductIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     price_cents: int = Field(ge=0)
     stock: int = Field(default=0, ge=0)
+    category: str | None = Field(default=None, min_length=1, max_length=40)
 
 
 class Product(ProductIn):
@@ -21,8 +22,11 @@ class Product(ProductIn):
 
 
 @router.get("", response_model=list[Product])
-def list_products(db: sqlite3.Connection = Depends(get_db)):
-    rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
+def list_products(category: str | None = None, db: sqlite3.Connection = Depends(get_db)):
+    if category is None:
+        rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
+    else:
+        rows = db.execute("SELECT * FROM products WHERE category = ? ORDER BY id", (category,)).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -38,8 +42,8 @@ def get_product(product_id: int, db: sqlite3.Connection = Depends(get_db)):
 def create_product(product: ProductIn, db: sqlite3.Connection = Depends(get_db)):
     try:
         cur = db.execute(
-            "INSERT INTO products (sku, name, price_cents, stock) VALUES (?, ?, ?, ?)",
-            (product.sku, product.name, product.price_cents, product.stock),
+            "INSERT INTO products (sku, name, price_cents, stock, category) VALUES (?, ?, ?, ?, ?)",
+            (product.sku, product.name, product.price_cents, product.stock, product.category),
         )
         db.commit()
     except sqlite3.IntegrityError:
