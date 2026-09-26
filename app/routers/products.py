@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth import require_api_key
-from app.db import get_db
+from app.db import db_path, get_db
+
+# Product list per database file.
+_list_cache: dict[str, list[dict]] = {}
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -22,8 +25,11 @@ class Product(ProductIn):
 
 @router.get("", response_model=list[Product])
 def list_products(db: sqlite3.Connection = Depends(get_db)):
-    rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
-    return [dict(r) for r in rows]
+    key = db_path()
+    if key not in _list_cache:
+        rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
+        _list_cache[key] = [dict(r) for r in rows]
+    return _list_cache[key]
 
 
 @router.get("/{product_id}", response_model=Product)
