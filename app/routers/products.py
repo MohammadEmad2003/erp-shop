@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
 from app.auth import require_api_key
@@ -21,8 +21,16 @@ class Product(ProductIn):
 
 
 @router.get("", response_model=list[Product])
-def list_products(db: sqlite3.Connection = Depends(get_db)):
-    rows = db.execute("SELECT * FROM products ORDER BY id").fetchall()
+def list_products(
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: sqlite3.Connection = Depends(get_db),
+):
+    """One page of products; X-Total-Count carries the size of the full list."""
+    total = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+    rows = db.execute("SELECT * FROM products ORDER BY id LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+    response.headers["X-Total-Count"] = str(total)
     return [dict(r) for r in rows]
 
 
