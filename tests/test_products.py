@@ -2,7 +2,7 @@ from tests.conftest import AUTH
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "ok", "database": "ok"}
 
 
 def test_create_and_get_product(client, product):
