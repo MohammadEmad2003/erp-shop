@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS products (
     price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
     stock       INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0)
 );
+
+CREATE TABLE IF NOT EXISTS discount_codes (
+    code    TEXT    PRIMARY KEY,
+    percent INTEGER NOT NULL
+);
 """
 
 
