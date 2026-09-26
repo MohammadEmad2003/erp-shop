@@ -45,3 +45,22 @@ def create_product(product: ProductIn, db: sqlite3.Connection = Depends(get_db))
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail=f"SKU {product.sku} already exists")
     return {"id": cur.lastrowid, **product.model_dump()}
+
+
+class ProductPatch(BaseModel):
+    name: str | None = None
+    price_cents: int | None = None
+    stock: int | None = None
+
+
+@router.patch("/{product_id}", response_model=Product, dependencies=[Depends(require_api_key)])
+def update_product(product_id: int, patch: ProductPatch, db: sqlite3.Connection = Depends(get_db)):
+    changes = patch.model_dump(exclude_none=True)
+    if changes:
+        assignments = ", ".join(f"{field} = ?" for field in changes)
+        db.execute(f"UPDATE products SET {assignments} WHERE id = ?", (*changes.values(), product_id))
+        db.commit()
+    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return dict(row)
