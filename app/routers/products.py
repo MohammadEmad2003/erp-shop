@@ -45,3 +45,31 @@ def create_product(product: ProductIn, db: sqlite3.Connection = Depends(get_db))
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail=f"SKU {product.sku} already exists")
     return {"id": cur.lastrowid, **product.model_dump()}
+
+
+class PriceIn(BaseModel):
+    price_cents: int = Field(ge=0)
+
+
+@router.put("/{product_id}/price", response_model=Product, dependencies=[Depends(require_api_key)])
+def change_price(product_id: int, body: PriceIn, db: sqlite3.Connection = Depends(get_db)):
+    """Change the price and log the change atomically."""
+    with db:
+        row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Product not found")
+        db.execute("UPDATE products SET price_cents = ? WHERE id = ?", (body.price_cents, product_id))
+        db.execute(
+            "INSERT INTO price_changes (product_id, old_cents, new_cents) VALUES (?, ?, ?)",
+            (product_id, row["price_cents"], body.price_cents),
+        )
+    return {**dict(row), "price_cents": body.price_cents}
+
+
+@router.get("/{product_id}/price-history")
+def price_history(product_id: int, db: sqlite3.Connection = Depends(get_db)):
+    rows = db.execute(
+        "SELECT old_cents, new_cents, changed_at FROM price_changes WHERE product_id = ? ORDER BY id DESC",
+        (product_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
