@@ -45,3 +45,20 @@ def create_product(product: ProductIn, db: sqlite3.Connection = Depends(get_db))
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail=f"SKU {product.sku} already exists")
     return {"id": cur.lastrowid, **product.model_dump()}
+
+
+@router.post("/import", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_api_key)])
+def import_products(products: list[ProductIn], db: sqlite3.Connection = Depends(get_db)):
+    """Create many products at once; returns how many were created."""
+    created = 0
+    for product in products:
+        try:
+            db.execute(
+                "INSERT INTO products (sku, name, price_cents, stock) VALUES (?, ?, ?, ?)",
+                (product.sku, product.name, product.price_cents, product.stock),
+            )
+            db.commit()
+            created += 1
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=409, detail=f"SKU {product.sku} already exists")
+    return {"created": created}
