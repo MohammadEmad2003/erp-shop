@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
 from app.auth import require_api_key
@@ -45,3 +45,13 @@ def create_product(product: ProductIn, db: sqlite3.Connection = Depends(get_db))
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail=f"SKU {product.sku} already exists")
     return {"id": cur.lastrowid, **product.model_dump()}
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(product_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Remove a discontinued product from the catalogue."""
+    cur = db.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    db.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
